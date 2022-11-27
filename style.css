@@ -1,0 +1,41 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#game-container {
+    background-color: rgb(102, 102, 102);
+    width: 250px;
+    height: 500px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+#game-container>div {
+    width: 100%;
+    height: calc(100% / var(--rowCount));
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+#game-container>div>div {
+    border: 1px solid white;
+    width: calc(100% / var(--columnCount));
+}
+
+[color="red"] {
+    background-color: red;
+}
+
+[color="normal"] {
+    background-color: rgb(102, 102, 102);
+}

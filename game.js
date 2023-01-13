@@ -1,100 +1,182 @@
-const countOfRows = 20
-const countOfColumns = 10
+var countOfRows = 89
+var countOfColumns = 45
+var size = () => countOfColumns * countOfRows
 var gameCells = []
 
+var container
+var startButton
+var rowCountInput
+var columnCountInput
+
+
 window.onload = function () {
-    createGameBoard()
-    newShape()
-    setInterval(() => {
-        nextLine()
-    }, 500)
+    setDomElements()
 }
 
-function createGameBoard() {
-    const container = document.getElementById("game-container")
-    container.addEventListener("click", () => newShape())
-    container.setAttribute(
-        'style',
-        `--rowCount: ${countOfRows}; --columnCount: ${countOfColumns};`)
 
-    for (let i = 0; i < countOfRows; i++) {
-        const newRow = document.createElement("div")
-        const newRowArray = []
+function setDomElements() {
+    document.addEventListener("keydown", (k) => keys(k))
+    container = document.getElementById("game-container")
+    startButton = document.getElementById("start-game")
+    rowCountInput = document.getElementById("row-count-input")
+    columnCountInput = document.getElementById("column-count-input")
 
-        for (let j = 0; j < countOfColumns; j++) {
-            const newCell = document.createElement("div")
-            newCell.setAttribute("color", "normal")
-            newRow.appendChild(newCell)
-            newRowArray.push(newCell)
-        }
+    startButton.addEventListener("click", () => {
+        createGrid()
+        currentShape = getShape(getRandomShapeId(), currentRotation)
+        currentStartPoint = Math.floor(countOfColumns / 2)
+        clearInterval(interval)
+        interval = 0
+        startDropping()
+    })
 
-        container.appendChild(newRow)
-        gameCells.push(newRowArray)
-    }
-}
-
-function getField(startRow, startColumn, isVertical) {
-    const field = []
-
-    const addRow = isVertical ? 3 : 1
-    const addColumn = isVertical ? 1 : 3
-
-    for (let i = startRow; i <= startRow + addRow; i++) {
-        const row = []
-        for (let j = startColumn; j <= startColumn + addColumn; j++) {
-            if (gameCells[i] != undefined && gameCells[i][j] != undefined) {
-                row.push(gameCells[i][j])
-            }
-        }
-        field.push(row)
-    }
-    return field
-}
-
-function dyeCells(clear) {
-    const field = getField(currentRow, currentCollumn, isVertical)
-    field.forEach((row, i) => {
-        row.forEach((cell, j) => {
-            if (shape[i][j] && !clear) {
-                cell.setAttribute("color", "red")
-            } else {
-                cell.setAttribute("color", "normal")
-            }
-        })
+    rowCountInput.addEventListener("focusout", (event) => {
+        countOfRows = event.target.value
+    })
+    columnCountInput.addEventListener("focusout", (event) => {
+        countOfColumns = event.target.value
     })
 }
 
-var shape = []
-var currentRow = -1
-var currentCollumn = -1
-var isVertical = false
-function newShape() {
-    shape = getShape()
-    currentRow = 0
-    currentCollumn = 3
-    isVertical = false
-    dyeCells()
-}
 
-function nextLine() {
-    if (scanNextRow(currentRow + 2)) {
-        dyeCells(true)
-        currentRow++
-        dyeCells()
-    } else {
-        newShape()
+function createGrid() {
+    console.log(countOfRows + '""""""""""""""""""' + countOfColumns + '"""""""""""""""' + size())
+    gameCells = []
+    container.innerHTML = ""
+    createShapes(countOfColumns)
+
+    container.setAttribute(
+        "style",
+        `--rowCount: ${countOfRows}; --columnCount: ${countOfColumns};`
+    )
+
+    for (let i = 0; i < size(); i++) {
+        const cell = document.createElement("div")
+        cell.setAttribute("touched", "false")
+        container.appendChild(cell)
+        gameCells.push(cell)
     }
 }
 
-function scanNextRow(newRow) {
-    const field = getField(newRow, currentCollumn, isVertical)
-    console.log(field[0])
-    if (field[0].length > 0) {
-        for (const cell of field[0]) {
-            const color = cell.getAttribute("color")
-            if (color != "normal") { console.log("false"); return false }
+var currentShape = {}
+var currentRotation = 0
+var currentStartPoint = 0
+var interval = 0
+
+function startDropping() {
+    drawShape()
+    interval = setInterval(() => {
+        if (scan("scanBelow") == "ok") {
+            drawShape(true)
+            currentStartPoint += countOfColumns
+            drawShape(false)
+
+        } else {
+            scanRows()
+            clearInterval(interval)
+            if (scanFirstRow()) {
+                currentShape = getShape(getRandomShapeId(), currentRotation)
+                currentStartPoint = Math.floor(countOfColumns / 2)
+                startDropping()
+            }
         }
-        console.log("true")
-        return true
-    } else { return false }
+    }, 200);
+}
+
+function drawShape(clear) {
+    for (const cell of currentShape[currentRotation.toString()]['fill']) {
+        const cellToDraw = gameCells[currentStartPoint + cell]
+        if (cellToDraw != undefined) {
+            if (!clear) {
+                cellToDraw.style.backgroundColor = "#5051fb"
+                cellToDraw.setAttribute("touched", "true")
+            } else {
+                cellToDraw.setAttribute("touched", "false")
+                cellToDraw.style.backgroundColor = "transparent"
+            }
+        }
+    }
+}
+
+function scan(side) {
+    for (const cell of currentShape[currentRotation.toString()][side.toString()]) {
+        const cellToScan = gameCells[currentStartPoint + cell]
+        if (cellToScan != undefined) {
+            if (cellToScan.getAttribute("touched") == "true") {
+                return "fullCell"
+            }
+        } else {
+            return "noCell"
+        }
+    }
+    return "ok"
+}
+
+function keys(k) {
+    if (k.code == "ArrowLeft" && scan("scanLeft") == "ok") {
+        drawShape(true)
+        currentStartPoint += -1
+        drawShape(false)
+    }
+    if (k.code == "ArrowRight") {
+        if (scan("scanRight") == "ok") {
+            drawShape(true)
+            currentStartPoint += 1
+            drawShape(false)
+        }
+    }
+    if (k.code == "ArrowDown") {
+        if (scan("scanBelow") == "ok") {
+            drawShape(true)
+            currentStartPoint += countOfColumns
+            drawShape(false)
+        }
+    }
+    if (k.code == "ArrowUp") {
+        drawShape(true)
+        currentRotation == 270 ? currentRotation = 0 : currentRotation += 90
+        drawShape()
+    }
+}
+
+function scanRows() {
+    for (let i = 0; i < size(); i -= -countOfColumns) {
+        var isFull = true
+        for (let j = i; j < i + countOfColumns; j++) {
+            if (gameCells[j].getAttribute("touched") == "false") {
+                isFull = false
+                break
+            }
+        }
+        if (isFull) removeFilledRow(i)
+    }
+}
+
+function removeFilledRow(startPoint, endpoint = startPoint - - countOfColumns) {
+    const newRow = []
+    for (let i = startPoint; i < endpoint; i++) {
+        const cell = document.createElement("div")
+        cell.setAttribute("touched", "false")
+        if (i == startPoint) { container.insertAdjacentElement("afterbegin", cell) } else {
+            newRow[newRow.length - 1].insertAdjacentElement("afterend", cell)
+        }
+        newRow.push(cell)
+        gameCells[i].remove()
+    }
+    gameCells.splice(startPoint, countOfColumns)
+    gameCells = newRow.concat(gameCells)
+}
+
+function scanFirstRow() {
+    for (let i = 0; i < countOfColumns; i -= -1) {
+        if (gameCells[i].getAttribute("touched") == "true") {
+            gameOver()
+            return false
+        }
+    }
+    return true
+
+}
+function gameOver() {
+    console.log("Game Over")
 }
